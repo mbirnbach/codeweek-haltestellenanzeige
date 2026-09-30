@@ -191,8 +191,10 @@ already configured device. `SETUP_AP_PASSWORD` in `AppSettings.h` can make the
 AP password-protected.
 
 **Reconfigure:** hold BOOT (GPIO0) for 3 s, or Serial command `setup` (keeps
-config, prefilled) / `reset` (clears NVS). `Display::setupGestureDetected()` is
-the hook for a touch gesture (not used in v1).
+config, prefilled) / `reset` (clears NVS). Both restart the device with a flag
+in RTC memory (`setupRequest`), so the portal always starts on the same clean
+boot path as the first setup. `Display::setupGestureDetected()` is the hook for
+a touch gesture (not used in v1).
 
 ## TLS
 

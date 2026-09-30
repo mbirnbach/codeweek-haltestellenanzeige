@@ -13,6 +13,11 @@ constexpr uint32_t RENDER_INTERVAL_MS = 1000;
 // Some hint must always be visible on error screens.
 constexpr const char* SETUP_HINT = "BOOT-Taste 3 s halten = Einrichtung";
 
+// Set before a software restart to open the setup portal on the next boot.
+// RTC memory survives ESP.restart(), but not a power cycle.
+RTC_NOINIT_ATTR uint32_t setupRequest;
+constexpr uint32_t SETUP_REQUEST_MAGIC = 0x5E7A9B01;
+
 }  // namespace
 
 AppController::AppController(Display& display)
@@ -26,9 +31,13 @@ void AppController::begin() {
     display_.showBoot(settings::FIRMWARE_VERSION);
     setState(AppState::BOOTING);
 
+    const bool setupRequested = setupRequest == SETUP_REQUEST_MAGIC;
+    setupRequest = 0;
+
     config_ = store_.load();
-    if (!config_.isComplete()) {
-        Serial.println("[app] no valid configuration -> setup portal");
+    if (!config_.isComplete() || setupRequested) {
+        Serial.println(setupRequested ? "[app] setup requested -> setup portal"
+                                      : "[app] no valid configuration -> setup portal");
         setState(AppState::UNCONFIGURED);
         setState(AppState::CONFIG_PORTAL);
         portal_.begin(config_);
@@ -259,7 +268,10 @@ void AppController::showErrorScreen() {
 void AppController::checkSetupTriggers() {
     // BOOT button held for SETUP_HOLD_MS (works without any display input).
     if (digitalRead(settings::SETUP_BUTTON_PIN) == LOW) {
-        if (buttonDownSinceMs_ == 0) buttonDownSinceMs_ = millis();
+        if (buttonDownSinceMs_ == 0) {
+            buttonDownSinceMs_ = millis();
+            Serial.println("[app] BOOT button pressed (hold 3 s for setup)");
+        }
         if (millis() - buttonDownSinceMs_ >= settings::SETUP_HOLD_MS) {
             Serial.println("[app] BOOT button held -> setup");
             openSetup();
@@ -273,13 +285,19 @@ void AppController::checkSetupTriggers() {
 }
 
 void AppController::openSetup() {
-    // Keep the saved values (prefilled in the portal); nothing is lost if
-    // setup is abandoned.
-    Serial.println("[app] opening setup portal");
-    display_.showBoot(settings::FIRMWARE_VERSION);
-    WiFi.disconnect(true);
-    setState(AppState::CONFIG_PORTAL);
-    portal_.begin(config_);
+    // Restart and open the portal on the clean boot path (same as the very
+    // first setup) instead of switching the running Wi-Fi from station to
+    // access point mode. The saved values stay (prefilled in the portal);
+    // nothing is lost if setup is abandoned.
+    Serial.println("[app] restarting into setup portal");
+    StatusScreen s;
+    s.title = "Einrichtung";
+    s.detail = "Startet neu ...";
+    display_.showStatus(s);
+    setupRequest = SETUP_REQUEST_MAGIC;
+    Serial.flush();
+    delay(300);
+    ESP.restart();
 }
 
 void AppController::factoryReset() {

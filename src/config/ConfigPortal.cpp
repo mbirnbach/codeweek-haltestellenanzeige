@@ -45,11 +45,15 @@ void ConfigPortal::begin(const DeviceConfig& current) {
     WiFi.persistent(false);
     WiFi.disconnect(true);
     WiFi.mode(WIFI_AP_STA);
-    WiFi.softAPConfig(AP_IP, AP_IP, IPAddress(255, 255, 255, 0));
     const char* apPassword = settings::SETUP_AP_PASSWORD[0] ? settings::SETUP_AP_PASSWORD : nullptr;
-    WiFi.softAP(apName_.c_str(), apPassword);
-    Serial.printf("[portal] access point '%s' started, open http://%s\n", apName_.c_str(),
-                  AP_IP.toString().c_str());
+    const bool apOk = WiFi.softAP(apName_.c_str(), apPassword) &&
+                      WiFi.softAPConfig(AP_IP, AP_IP, IPAddress(255, 255, 255, 0));
+    if (apOk) {
+        Serial.printf("[portal] access point '%s' started, open http://%s\n", apName_.c_str(),
+                      AP_IP.toString().c_str());
+    } else {
+        Serial.printf("[portal] ERROR: access point '%s' did not start\n", apName_.c_str());
+    }
 
     // Captive portal: answer every DNS name with our own address.
     dns_.setErrorReplyCode(DNSReplyCode::NoError);
