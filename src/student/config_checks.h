@@ -33,6 +33,13 @@ static_assert(config_checks::utf8Chars(NOW_TEXT) <= 8,
               "\n\n  FEHLER in display_config.h: NOW_TEXT ist zu lang."
               "\n  Höchstens 8 Zeichen, sonst passt es nicht auf den Bildschirm.\n");
 
+static_assert(CANCELLED_TEXT != nullptr && config_checks::utf8Chars(CANCELLED_TEXT) >= 1,
+              "\n\n  FEHLER in display_config.h: CANCELLED_TEXT ist leer."
+              "\n  Schreib ein Wort zwischen die Anführungszeichen, z.B. \"entfällt\".\n");
+static_assert(config_checks::utf8Chars(CANCELLED_TEXT) <= 8,
+              "\n\n  FEHLER in display_config.h: CANCELLED_TEXT ist zu lang."
+              "\n  Höchstens 8 Zeichen, sonst passt es nicht auf den Bildschirm.\n");
+
 static_assert(TEXT_COLOR != BACKGROUND_COLOR,
               "\n\n  FEHLER in display_config.h: TEXT_COLOR und BACKGROUND_COLOR sind gleich."
               "\n  Dann könnte man den Text nicht lesen! Wähle zwei verschiedene Farben.\n");

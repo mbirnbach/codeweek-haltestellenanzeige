@@ -2,15 +2,21 @@
 
 #if DISPLAY_BACKEND_CYD
 
-#include <TFT_eSPI.h>
-
 #include "display/Display.h"
 
-// TFT renderer for the ESP32 Cheap Yellow Display (320x240, landscape).
+class Adafruit_ILI9341;
+class CYDRenderer;
+class SPIClass;
+
+// The physical ESP32-2432S028 "Cheap Yellow Display": ILI9341 on a dedicated
+// HSPI bus, backlight on GPIO 21, landscape 320x240.
 //
-// STATUS: skeleton, NOT tested on hardware. The layout logic is complete,
-// but driver, pins, rotation, fonts, colours and touch must be verified
-// once the boards arrive (see TODO(HARDWARE) markers and README.md).
+// This class only brings up the hardware; all drawing is done by
+// CYDRenderer. Only these two classes know about Adafruit GFX – the rest of
+// the application talks to the Display interface.
+//
+// No touch input in v1: setup happens in the web portal, the BOOT button
+// reopens it.
 class CYDDisplay : public Display {
 public:
     void begin() override;
@@ -18,22 +24,13 @@ public:
     void showSetup(const SetupScreen& setup) override;
     void showStatus(const StatusScreen& status) override;
     void showDepartures(const DisplayModel& model) override;
-    void loop() override;
-    bool setupGestureDetected() override;
+    void loop() override;  // scrolls the message ticker
 
 private:
-    void drawHeader(const DisplayModel& m);
-    void drawRow(const DisplayModel& m, int index, int lineW, int platformW, int timeW);
-    void drawFooter(const DisplayModel& m);
-    void drawCentered(const String& text, int y, uint16_t color);
-    void useFont(bool bold);
-    // Truncates `text` (ASCII) with "." until it fits into maxWidth pixels.
-    String fit(const String& text, int maxWidth);
-    void fillBackground();
-
-    TFT_eSPI tft_;
-    DisplayModel last_;
-    bool boardOnScreen_ = false;
+    SPIClass* spi_ = nullptr;
+    Adafruit_ILI9341* tft_ = nullptr;
+    CYDRenderer* renderer_ = nullptr;
+    uint32_t lastTickerMs_ = 0;
 };
 
 #endif

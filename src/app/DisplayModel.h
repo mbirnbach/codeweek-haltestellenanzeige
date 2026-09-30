@@ -8,7 +8,7 @@
 
 constexpr int MAX_DEPARTURE_ROWS = 6;
 
-// Longest text in the time column ("sofort", "12 min", "AUSFALL").
+// Longest text in the time column ("sofort", "12 min", "entfällt").
 constexpr int MAX_TIME_CHARS = 8;
 
 enum class BoardStatus : uint8_t {
@@ -21,7 +21,7 @@ struct DepartureRow {
     String line;         // "4", "RT1"
     String destination;  // "Druseltal"
     String platform;     // "A", may be empty
-    String time;         // "3 min", "sofort", "AUSFALL"
+    String time;         // "3 min", "sofort", "entfällt" (CANCELLED_TEXT)
     bool cancelled = false;
 
     bool operator==(const DepartureRow& o) const {
@@ -42,9 +42,13 @@ struct DisplayModel {
     BoardStatus status = BoardStatus::Live;
     String statusText;  // empty when live; "VERALTET · Stand 11:40", "KEIN WLAN · ..."
 
+    // Info/disruption messages of the shown departures, joined with " +++ ".
+    // Empty = none. When set, it takes the last row (scrolls on the CYD).
+    String ticker;
+
     bool operator==(const DisplayModel& o) const {
         if (stopName != o.stopName || clock != o.clock || showPlatform != o.showPlatform ||
-            rowCount != o.rowCount || status != o.status || statusText != o.statusText) {
+            rowCount != o.rowCount || status != o.status || statusText != o.statusText || ticker != o.ticker) {
             return false;
         }
         for (int i = 0; i < rowCount; ++i) {

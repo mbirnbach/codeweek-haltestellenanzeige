@@ -39,9 +39,9 @@ constexpr uint32_t STALE_AFTER_MS = 3 * 60000;
 // --- Wi-Fi --------------------------------------------------------------------
 // After this long without a connection at startup, show the Wi-Fi error
 // screen (retrying continues in the background).
-constexpr uint32_t WIFI_CONNECT_TIMEOUT_MS = 20000;
+constexpr uint32_t WIFI_CONNECT_TIMEOUT_MS = 30000;
 // While disconnected, restart the connection attempt this often.
-constexpr uint32_t WIFI_RETRY_INTERVAL_MS = 15000;
+constexpr uint32_t WIFI_RETRY_INTERVAL_MS = 30000;  // weak signal can need >15 s
 
 // --- Setup portal ------------------------------------------------------------
 constexpr const char* SETUP_AP_PREFIX = "Abfahrt-Setup-";

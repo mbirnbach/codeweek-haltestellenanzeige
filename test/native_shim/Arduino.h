@@ -41,6 +41,7 @@ public:
         to = std::min<unsigned int>(to, length());
         return String(s_.substr(from, to - from));
     }
+    void remove(unsigned int index) { if (index < s_.size()) s_.erase(index); }
     int indexOf(char c) const { return indexOf(String(c)); }
     int indexOf(const String& str) const {
         auto p = s_.find(str.s_);

@@ -177,12 +177,14 @@ void test_model_from_edge_cases() {
     const DisplayModel m = buildDisplayModel(b, EDGE_NOW, BoardStatus::Stale);
 
     // "8" left 102 s ago -> gone. "10" left 12 s ago -> still "now".
-    const int expectedRows = DEPARTURE_COUNT < 4 ? DEPARTURE_COUNT : 4;
+    // RT1 has a message -> ticker, which takes the last row.
+    const int expectedRows = DEPARTURE_COUNT - 1 < 4 ? DEPARTURE_COUNT - 1 : 4;
     TEST_ASSERT_EQUAL_INT(expectedRows, m.rowCount);
     assertEq("10", m.rows[0].line);
     assertEq(formatMinutes(0), m.rows[0].time);
     assertEq("RT1", m.rows[1].line);
-    assertEq("AUSFALL", m.rows[1].time);
+    assertEq(CANCELLED_TEXT, m.rows[1].time);
+    assertEq("RT1: Fahrt fällt aus", m.ticker);
     TEST_ASSERT_TRUE(m.rows[1].cancelled);
     assertEq("3", m.rows[2].line);
     assertEq(formatMinutes(3), m.rows[2].time);  // 12:07:30 - 12:04:12 = 3 min 18 s
@@ -193,7 +195,9 @@ void test_model_from_edge_cases() {
 void test_model_respects_departure_count() {
     const StationBoard b = parseFixture("departures_koenigsplatz_20.json");
     const DisplayModel m = buildDisplayModel(b, b.servedAt, BoardStatus::Live);
-    TEST_ASSERT_EQUAL_INT(DEPARTURE_COUNT, m.rowCount);
+    // 3rd departure (line 1, "Zusatzfahrt") has a message -> ticker row.
+    TEST_ASSERT_TRUE(m.ticker.startsWith("1: Zusatzfahrt"));
+    TEST_ASSERT_EQUAL_INT(DEPARTURE_COUNT - 1, m.rowCount);
     assertEq("", m.statusText);  // no status bar when live
     const auto lines = board_text::departures(m, false);
     for (const String& line : lines) TEST_ASSERT_TRUE(line.indexOf("LIVE") < 0);
@@ -228,16 +232,34 @@ void test_board_lines_have_fixed_width() {
     for (const String& line : lines) {
         TEST_ASSERT_EQUAL_INT_MESSAGE(board_text::WIDTH, text::utf8Length(line), line.c_str());
     }
-    // Long destination is cut, cancelled row still ends with AUSFALL.
+    // Long destination is cut, cancelled row still ends with the cancel text.
     bool found = false;
     for (const String& line : lines) {
         if (line.startsWith("RT1")) {
             found = true;
-            TEST_ASSERT_TRUE(line.endsWith("AUSFALL"));
+            TEST_ASSERT_TRUE(line.endsWith(CANCELLED_TEXT));
             TEST_ASSERT_TRUE(line.indexOf("Hofgeismar-Hümme") >= 0);
         }
     }
     TEST_ASSERT_TRUE(found);
+}
+
+void test_ticker_joins_unique_messages() {
+    StationBoard b;
+    b.stop.name = "Test";
+    const char* msgs[] = {"Umleitung", "RT1: Bauarbeiten", "Umleitung", ""};
+    const char* lines[] = {"4", "RT1", "4", "5"};
+    for (int i = 0; i < 4; ++i) {
+        Departure d;
+        d.line = lines[i];
+        d.destination = "Ziel";
+        d.scheduled = EDGE_NOW + 60 * (i + 1);
+        d.firstMessage = msgs[i];
+        b.departures.push_back(d);
+    }
+    const DisplayModel m = buildDisplayModel(b, EDGE_NOW, BoardStatus::Live);
+    assertEq("4: Umleitung  +++  RT1: Bauarbeiten", m.ticker);
+    TEST_ASSERT_EQUAL_INT(DEPARTURE_COUNT - 1 < 4 ? DEPARTURE_COUNT - 1 : 4, m.rowCount);
 }
 
 void test_board_without_departures() {
@@ -292,6 +314,7 @@ int main() {
     RUN_TEST(test_model_counts_down_locally);
     RUN_TEST(test_model_without_clock_shows_departure_time);
     RUN_TEST(test_board_lines_have_fixed_width);
+    RUN_TEST(test_ticker_joins_unique_messages);
     RUN_TEST(test_board_without_departures);
     RUN_TEST(test_device_config_rules);
     RUN_TEST(test_student_settings_are_sane);

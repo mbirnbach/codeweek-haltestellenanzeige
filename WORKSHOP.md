@@ -20,11 +20,14 @@ Du darfst nur den Bereich zwischen den Linien mit **CODEWEEK 2026** ändern.
 ### 2. Wähle deine Farben
 
 ```cpp
-constexpr DisplayColor BACKGROUND_COLOR = COLOR_BLACK;
-constexpr DisplayColor TEXT_COLOR       = COLOR_WHITE;
-constexpr DisplayColor LINE_COLOR       = COLOR_YELLOW;
-constexpr DisplayColor TIME_COLOR       = COLOR_CYAN;
+constexpr DisplayColor BACKGROUND_COLOR = COLOR_BLUE;
+constexpr DisplayColor TEXT_COLOR       = COLOR_ORANGE;
+constexpr DisplayColor LINE_COLOR       = COLOR_ORANGE;
+constexpr DisplayColor TIME_COLOR       = COLOR_ORANGE;
 ```
+
+Am Anfang sieht deine Anzeige aus wie die echte an der Haltestelle:
+blaues Schild, orange Leuchtschrift. Mach sie zu deiner eigenen!
 
 Diese Farben gibt es:
 `COLOR_BLACK` `COLOR_WHITE` `COLOR_GRAY` `COLOR_RED` `COLOR_ORANGE`
@@ -45,19 +48,26 @@ constexpr const char* NOW_TEXT = "sofort";
 Zum Beispiel `"jetzt"`, `"gleich"`, `"da!"` oder `"los!"`.
 Höchstens 8 Zeichen. Die Anführungszeichen `" "` müssen bleiben!
 
+Genauso kannst du ändern, was bei einer ausgefallenen Fahrt steht:
+
+```cpp
+constexpr const char* CANCELLED_TEXT = "entfällt";
+```
+
 ### 5. Wähle eine Schrift
 
 ```cpp
-constexpr DisplayFont FONT = FONT_MODERN;
+constexpr DisplayFont FONT = FONT_LED;
 ```
 
-`FONT_CLASSIC` · `FONT_MODERN` · `FONT_COMPACT` · `FONT_PIXEL`
+`FONT_LED` (Leuchtpunkte wie an der Haltestelle) · `FONT_CLASSIC` · `FONT_MODERN` ·
+`FONT_COMPACT` · `FONT_PIXEL`
 
 ### 6. Optional: Uhr und Steig an oder aus
 
 ```cpp
 constexpr bool SHOW_CLOCK    = true;
-constexpr bool SHOW_PLATFORM = true;
+constexpr bool SHOW_PLATFORM = false;
 ```
 
 `true` = an, `false` = aus.
@@ -120,4 +130,5 @@ Original-Code zum Zurückkopieren.
 | (nichts unten) | Alles aktuell |
 | `VERALTET` | Die Daten sind etwas älter – der Server hatte gerade Probleme |
 | `KEIN WLAN` | Keine Verbindung – es werden die letzten Daten gezeigt |
-| `AUSFALL` | Diese Fahrt fällt aus |
+| `entfällt` | Diese Fahrt fällt aus (Text in `CANCELLED_TEXT` änderbar) |
+| Laufschrift unten | Hinweise, z.B. Umleitungen oder Zusatzfahrten |

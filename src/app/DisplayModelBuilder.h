@@ -8,7 +8,8 @@
 //
 // - picks the next DEPARTURE_COUNT departures (student setting)
 // - drops departures that have already left since the last fetch
-// - cancelled departures are shown as "AUSFALL", never as a normal time
+// - cancelled departures show CANCELLED_TEXT ("entfällt"), never a normal time
+// - messages of these departures become a ticker line (replaces the last row)
 // - minute text comes from the student's formatMinutes()
 //
 // `now` is epoch seconds; values before 2024 mean "clock unknown".

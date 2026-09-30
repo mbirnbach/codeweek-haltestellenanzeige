@@ -127,6 +127,10 @@ std::vector<String> departures(const DisplayModel& m, bool ansi) {
     if (m.rowCount == 0) {
         out.push_back(Line(ansi).add(centered("Keine Abfahrten in nächster Zeit", WIDTH), TEXT_COLOR).done());
     }
+    // Scrolls on the CYD; here the start of it (full text in the Serial log above).
+    if (m.ticker.length() > 0) {
+        out.push_back(Line(ansi).add(text::fitColumn(String("» ") + m.ticker, WIDTH), TEXT_COLOR).done());
+    }
 
     out.push_back(separator(ansi));
     // Status bar only when something is off (stale / offline).

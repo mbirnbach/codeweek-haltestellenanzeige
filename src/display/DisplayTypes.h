@@ -25,6 +25,7 @@ enum DisplayFont : uint8_t {
     FONT_MODERN,   // clean sans-serif (default)
     FONT_COMPACT,  // small, fits more text
     FONT_PIXEL,    // retro, blocky
+    FONT_LED,      // like the LED signs at the stops
 };
 
 inline const char* displayFontName(DisplayFont font) {
@@ -33,6 +34,7 @@ inline const char* displayFontName(DisplayFont font) {
         case FONT_MODERN:  return "MODERN";
         case FONT_COMPACT: return "COMPACT";
         case FONT_PIXEL:   return "PIXEL";
+        case FONT_LED:     return "LED";
     }
     return "?";
 }

@@ -8,10 +8,22 @@ part (`src/student/`). Participant instructions (German): [WORKSHOP.md](WORKSHOP
 The firmware talks **only** to the departure API at `https://nvv-api.edupixel.de`
 (backend repo: `öpnv-ks-api`). It knows nothing about HAFAS, MCT, GTFS or SIRI.
 
-> **Hardware status:** the CYD boards have not been verified yet. The application,
-> API integration, setup portal and Serial rendering are complete and tested
-> without the display. The TFT renderer is a skeleton with unverified pin values.
-> See [Hardware bring-up](#hardware-bring-up-cyd).
+## Hardware
+
+| | |
+|---|---|
+| Board | ESP32-2432S028 ("Cheap Yellow Display") |
+| Display | ILI9341, 320×240, used in landscape (rotation 1) |
+| Bus | dedicated HSPI: `SPIClass(HSPI).begin(14, 12, 13, 15)` |
+| Pins | `TFT_CS 15`, `TFT_DC 2`, `TFT_RST -1`, `TFT_SCK 14`, `TFT_MISO 12`, `TFT_MOSI 13` |
+| Backlight | GPIO 21, `HIGH` = on |
+| Graphics | Adafruit GFX + Adafruit ILI9341 |
+| Touch | not used in v1 (setup via the web portal, BOOT button reopens it) |
+
+Controller, pinout, backlight and colours were verified on a real board with
+Adafruit GFX/ILI9341 (colour fills and text). The complete firmware has not yet
+been checked on the assembled device; see [Remaining hardware
+TODOs](#remaining-hardware-todos).
 
 ## Architecture
 
@@ -42,7 +54,8 @@ src/
     DisplayTypes.h          named colours and fonts for participants
     BoardFormatter.*        text rendering of all screens                         [host-tested]
     SerialDisplay.*         prints BoardFormatter output (env serial-dev)
-    CYDDisplay.*            TFT_eSPI renderer (env cyd) – hardware TODOs
+    CYDDisplay.*            CYD hardware init: HSPI, ILI9341, backlight (env cyd)
+    CYDRenderer.*           draws all CYD screens on any Adafruit_GFX surface
   student/                  ← the ONLY part participants edit
     display_config.h        count, colours, font, "0 min" text, toggles
     student_code.cpp        bonus: formatMinutes()
@@ -62,23 +75,25 @@ the TFT. Displays are only redrawn when the model changed.
 
 | Env | Target | Purpose |
 |---|---|---|
-| `serial-dev` (default) | any ESP32 | whole application, screens printed to Serial (ANSI colours) |
-| `cyd` | CYD | same application with TFT renderer (**unverified pins**) |
+| `serial-dev` | any ESP32 | whole application, screens printed to Serial (ANSI colours) |
+| `cyd` (default) | CYD | the real device: ILI9341 via Adafruit GFX |
 | `native` | host | unit tests: `pio test -e native` |
 | `preview` | host | renders JSON like the Serial display: `tools/preview.sh` |
 
 ```bash
-pio run -e serial-dev                  # build
-pio run -e serial-dev -t upload        # flash
+pio run                                # build for the CYD (default env)
+pio run -t upload                      # flash the CYD
+pio run -e serial-dev -t upload        # flash with Serial-only output
 pio device monitor                     # Serial output (commands: status, fetch, setup, reset)
 pio test -e native                     # host unit tests
 tools/api_check.sh                     # live API smoke test (token from secrets.h)
 tools/preview.sh 2200002               # live board rendered on this computer
 python3 tools/portal_mock.py           # setup page on http://localhost:8765
+tools/render_cyd.sh                    # CYD screens as PNGs, several student settings
 ```
 
-**Before the workshop:** set `default_envs = cyd` in `platformio.ini` (the VS Code
-Build/Upload buttons use the default env), and run `pio run -e cyd` once on every
+**Before the workshop:** `default_envs = cyd` is set, so the VS Code Build/Upload
+buttons target the CYD. Run `pio run -e cyd` once on every
 laptop with internet so the toolchain and libraries are cached. Participants then
 don't need to install anything.
 
@@ -134,7 +149,8 @@ any clock, rows show the departure time (`13:25`) instead of minutes.
 | WIFI_ERROR | last data with `KEIN WLAN · Stand hh:mm`; without data: "Kein WLAN" screen |
 | API_ERROR | "Keine Abfahrtsdaten" with reason (token / unknown stop / server) |
 
-Cancelled departures are shown with `AUSFALL` in the time column (red), never as
+Cancelled departures show `CANCELLED_TEXT` (student setting, default
+`entfällt`) in the time column (red), never as
 a normal time. This is core logic, not participant code.
 
 ## NVS
@@ -176,7 +192,7 @@ AP password-protected.
 
 **Reconfigure:** hold BOOT (GPIO0) for 3 s, or Serial command `setup` (keeps
 config, prefilled) / `reset` (clears NVS). `Display::setupGestureDetected()` is
-the hook for a touch gesture (planned: long press on the header).
+the hook for a touch gesture (not used in v1).
 
 ## TLS
 
@@ -185,29 +201,54 @@ Services R1/R4 + GlobalSign (current chain: WE1 → GTS Root R4, checked
 2026-09-28), ISRG X1/X2 (Let's Encrypt), SSL.com 2022. If the API switches to
 another CA, requests fail with a TLS error in the Serial log – add that root.
 
-## Hardware bring-up (CYD)
+## CYD renderer
 
-Everything hardware-specific is marked `TODO(HARDWARE)`:
+`CYDDisplay` only initialises the hardware (HSPI bus, ILI9341, rotation,
+backlight) and forwards to `CYDRenderer`, which draws everything on an
+`Adafruit_GFX&`. Nothing outside these two classes includes Adafruit headers.
+
+- Layout for 320×240: header (stop name, clock) 30 px, rows fill the rest;
+  the status bar (24 px) only appears when data is stale/offline.
+- Rows: line number left, time right, platform and destination in between.
+  Column widths come from the content within fixed limits; destinations are
+  cut with "." to their column (measured in pixels), so they never reach the
+  time column. With 3–4 rows, long destinations wrap onto two lines.
+- `FONT_LED` (default): styled like the NVV stop signs – a 44 px blue panel
+  (`BACKGROUND_COLOR`) with the stop name (without "Kassel "), clock and, if
+  stale/offline, the status; below it a dark LED board filling the rest.
+  Text is Adafruit's 5×7 font drawn LED by LED on a 2×3 px grid (2×4 px with
+  ≤4 rows), proportional letters, ~26 characters per row, real umlauts (CP437
+  glyphs). Rows share the board height evenly. Unlit LEDs are a faint version
+  of `TEXT_COLOR`.
+- Message ticker: the model's `ticker` (messages of the upcoming departures,
+  e.g. "RT1: Fahrplanänderungen …", each once, joined with `+++`) takes the
+  last row and scrolls right-to-left (2 px every 40 ms, `CYDDisplay::loop`).
+  It pauses while an API request is running (~1–3 s per minute). The Serial
+  display prints it as a `»` line.
+- Other fonts: `FONT_MODERN` FreeSans, `FONT_CLASSIC` FreeSerif (12 pt with ≤4 rows,
+  else 9 pt), `FONT_COMPACT` always 9 pt, `FONT_PIXEL` built-in 6×8 font ×2.
+  The GFX fonts are ASCII-only: umlauts are drawn as vowel + two dots, `ß` as
+  `ss`. The pixel font uses its CP437 umlaut glyphs.
+- Each band (header, row, status bar) is drawn into a `GFXcanvas16` and
+  copied in one go: no flicker on minute updates; only changed rows are redrawn.
+- `tools/render_cyd.sh` compiles the same renderer + Adafruit GFX for the host
+  and writes PNGs of all screens for several student settings to
+  `.pio/cyd-render/` – for checking layout changes without flashing.
+
+## Remaining hardware TODOs
 
 ```bash
 grep -rn "TODO(HARDWARE)" src platformio.ini
 ```
 
-Suggested order once boards arrive:
-
-1. Identify the variant (label, USB port(s), display controller). Adjust
-   `[env:cyd]` build flags (driver `ILI9341_2_DRIVER` vs `ST7789_DRIVER`, pins,
-   `TFT_BL`). The current values are community defaults for ESP32-2432S028R.
-2. Flash `cyd`, check the boot screen: rotation (`ROTATION` in `CYDDisplay.cpp`),
-   colour order/inversion (`INVERT_COLORS`, or `TFT_RGB_ORDER`).
-3. Check the departure layout for 3 and 6 rows, all four fonts, long names;
-   tune `layout::` constants. Fonts are ASCII-only (umlauts → ae/oe/ue); consider
-   TFT_eSPI smooth fonts (`.vlw`) with umlauts if wanted.
-4. Touch (XPT2046, separate SPI on the CYD): add e.g. `XPT2046_Touchscreen`,
-   calibrate, implement the long-press in `CYDDisplay::setupGestureDetected()`.
-5. Verify the BOOT button is reachable in the enclosure (else rely on touch).
-6. Optional: backlight PWM/brightness.
-7. Set `default_envs = cyd`.
+- Rotation 1 vs 3 (both landscape) depending on the USB port position in the
+  enclosure (`ROTATION` in `CYDDisplay.cpp`).
+- Final visual tuning on the assembled device: spacing, font sizes,
+  readability from a distance, colours behind the enclosure window
+  (`layout::` in `CYDRenderer.cpp`).
+- BOOT button reachable in the enclosure (`AppSettings.h`).
+- Optional later: backlight dimming (PWM on GPIO 21), touch (XPT2046) as a
+  second way to open setup via `Display::setupGestureDetected()`.
 
 ## Tests
 
@@ -221,5 +262,7 @@ Suggested order once boards arrive:
   settings.
 - `tools/portal_mock.py` – the real portal page against simulated ESP routes.
 
-Not covered without hardware: on-device Wi-Fi, TLS handshake on the ESP32, NVS,
-captive-portal behaviour on real phones, TFT and touch.
+- `tools/render_cyd.sh` – CYD screens rendered on the host (same drawing code).
+
+Still to be checked on the device: Wi-Fi, TLS handshake on the ESP32, NVS,
+captive-portal behaviour on real phones, the full firmware on the panel.
