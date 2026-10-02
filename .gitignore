@@ -9,3 +9,6 @@
 include/secrets.h
 
 .DS_Store
+
+# Merged firmware images (contain the API token)
+dist/

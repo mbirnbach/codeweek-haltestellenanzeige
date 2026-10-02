@@ -4,6 +4,8 @@ Firmware for a small live departure display built on an ESP32 "Cheap Yellow
 Display" (CYD). Made for a 2-hour CodeWeek workshop for complete beginners: the
 core is prepared and robust, and participants only change a small, clearly marked
 part (`src/student/`). Participant instructions (German): [WORKSHOP.md](WORKSHOP.md).
+Flashing guide for the team (German, incl. flashing without PlatformIO):
+[FLASHEN.md](FLASHEN.md).
 
 The firmware talks **only** to the departure API at `https://nvv-api.edupixel.de`
 (backend repo: `öpnv-ks-api`). It knows nothing about HAFAS, MCT, GTFS or SIRI.
@@ -90,6 +92,7 @@ tools/api_check.sh                     # live API smoke test (token from secrets
 tools/preview.sh 2200002               # live board rendered on this computer
 python3 tools/portal_mock.py           # setup page on http://localhost:8765
 tools/render_cyd.sh                    # CYD screens as PNGs, several student settings
+tools/build_image.sh                   # single flash image dist/haltestellenanzeige-cyd.bin (0x0)
 ```
 
 **Before the workshop:** `default_envs = cyd` is set, so the VS Code Build/Upload
