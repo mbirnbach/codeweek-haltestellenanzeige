@@ -32,6 +32,48 @@ Beide Wege wurden am echten Gerät getestet (außer dem Browser-Flasher, siehe B
 
 ## 2. Einmalige Vorbereitung pro Rechner
 
+### Linux-Workshop-Rechner (Ubuntu/Mint/Debian): automatisch
+
+Für die Workshop-Rechner gibt es ein Skript, das alles erledigt: Pakete,
+VS Code mit PlatformIO und deutscher Oberfläche, USB-Rechte für die Displays,
+Projekt und `secrets.h` im Konto `schueler`, einmal komplett bauen (danach
+geht alles offline) und ein Starter „Haltestellenanzeige“ auf dem Schreibtisch.
+
+Im Konto **lehrer** (braucht Internet und das sudo-Passwort):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/mbirnbach/codeweek-haltestellenanzeige/main/tools/setup_workshop_linux.sh -o setup.sh
+sudo bash setup.sh
+```
+
+Das Skript fragt nach dem API-Token und läuft dann ohne weitere Rückfragen
+durch (beim ersten Mal ca. 10–15 Minuten). Am Ende steht eine Prüfliste.
+Danach **neu starten**, als `schueler` anmelden, Starter öffnen – fertig.
+Erneut ausführen holt den neuesten Projektstand.
+
+Alles Projektbezogene (Projekt, Token, PlatformIO, VS-Code-Einstellungen)
+liegt im Home-Ordner von `schueler` und verschwindet beim Zurücksetzen des
+Kontos. Zwischen zwei Gruppen nur die Teilnehmer-Dateien zurücksetzen
+(ohne Internet):
+
+```bash
+sudo -u schueler /home/schueler/codeweek-haltestellenanzeige/tools/workshop_reset.sh
+```
+
+**Nach dem Workshop** (bevor die Rechner zurückgehen):
+
+```bash
+sudo bash setup.sh --cleanup
+```
+
+Das nimmt die wenigen Systemänderungen zurück, die das Skript selbst gemacht
+hat (VS Code, Microsoft-Paketquelle, udev-Regel, brltty, Gruppe `dialout`).
+Danach wie geplant das Konto `schueler` zurücksetzen.
+
+Die folgenden Abschnitte 2.1–2.4 beschreiben dasselbe von Hand, z.B. für
+macOS oder Windows.
+
+
 ### 2.1 Projekt holen
 
 ```bash

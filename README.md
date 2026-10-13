@@ -93,6 +93,8 @@ tools/preview.sh 2200002               # live board rendered on this computer
 python3 tools/portal_mock.py           # setup page on http://localhost:8765
 tools/render_cyd.sh                    # CYD screens as PNGs, several student settings
 tools/build_image.sh                   # single flash image dist/haltestellenanzeige-cyd.bin (0x0)
+sudo bash tools/setup_workshop_linux.sh  # prepare an Ubuntu/Mint/Debian workshop PC (see FLASHEN.md); --cleanup afterwards
+tools/workshop_reset.sh                # restore src/student/ between workshop groups
 ```
 
 **Before the workshop:** `default_envs = cyd` is set, so the VS Code Build/Upload
